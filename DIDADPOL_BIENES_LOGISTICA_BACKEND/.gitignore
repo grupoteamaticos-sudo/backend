@@ -1,0 +1,7 @@
+.env
+Uploads/*
+node_modules/
+docs/outputs/*
+docs/outputs/!*.txt
+DB/backups
+DB/scripts
