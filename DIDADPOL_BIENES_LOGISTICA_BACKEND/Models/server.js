@@ -10,11 +10,12 @@ const { socketController } = require('../sockets/controller');
 const pool = require('../DB/db');
 const { setSocketInstance } = require('../sockets/socket.js');
 
+
+
 class Server {
   constructor() {
     this.app = express();
-    this.port = process.env.HTTP_PORT;
-    this.ip = process.env.IP_SERVER;
+  this.port = process.env.PORT || 3000;
 
     this.serverHttp = createServer(this.app);
 
@@ -119,8 +120,8 @@ class Server {
   }
 
   listen() {
-    this.serverHttp.listen(this.port, this.ip, () => {
-      console.log(`✅ Servidor corriendo en http://${this.ip}:${this.port}`);
+    this.serverHttp.listen(this.port, '0.0.0.0', () => {
+      console.log(`✅ Servidor corriendo en puerto ${this.port}`);
     });
   }
 }

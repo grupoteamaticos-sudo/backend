@@ -26,15 +26,21 @@ Programador               Fecha                      Descripcion
 ----------------------------------------------------------------------- */
 const { Pool } = require('pg');
 require('dotenv').config();
+const { Pool } = require('pg');
+require('dotenv').config();
 
 const pool = new Pool({
-    user: process.env.DB_USER,
-    host: process.env.DB_HOST,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE,
-    port: Number(process.env.DB_PORT),
-    // ssl: { rejectUnauthorized: false } // activar solo en producción si el servidor lo requiere
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
+
+pool.connect()
+  .then(() => console.log('✅ PostgreSQL conectado'))
+  .catch(err => console.error('❌ Error PostgreSQL:', err.message));
+
+module.exports = pool;
 
 pool.connect()
   .then(() => console.log('✅ PostgreSQL conectado'))
