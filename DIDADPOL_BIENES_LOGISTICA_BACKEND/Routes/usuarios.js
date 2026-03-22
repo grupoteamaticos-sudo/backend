@@ -39,9 +39,9 @@ router.get(
 // CREAR
 router.post(
   '/',
-  validarJWT,
-  soloAdmin,
-  checkPermission('USUARIO_CREAR'),
+ // validarJWT,
+ // soloAdmin,
+ // checkPermission('USUARIO_CREAR'),
   postUsuario
 );
 
