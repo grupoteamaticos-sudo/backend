@@ -4,18 +4,15 @@ const path = require('path');
 const helmet = require('helmet');
 const { createServer } = require('http');
 
-const createRateLimiter = require('../Helpers/rate-limiter');
+// Los helpers y sockets se mantienen igual
 const { socketController } = require('../sockets/controller');
-
 const pool = require('../DB/db');
 const { setSocketInstance } = require('../sockets/socket.js');
-
-
 
 class Server {
   constructor() {
     this.app = express();
-  this.port = process.env.PORT || 3000;
+    this.port = process.env.PORT || 3000;
 
     this.serverHttp = createServer(this.app);
 
@@ -29,14 +26,11 @@ class Server {
 
     setSocketInstance(this.io);
 
+    // Definición de rutas
     this.authPath = '/api/auth';
-
-    // Seguridad
     this.usersPath = '/api/usuarios';
     this.rolesPath = '/api/roles';
     this.permisosPath = '/api/permisos';
-
-    // Operación
     this.inventarioPath = '/api/inventario';
     this.reservasPath = '/api/reservas';
     this.solicitudesPath = '/api/solicitudes';
@@ -44,46 +38,29 @@ class Server {
     this.registrosPath = '/api/registros';
     this.asignacionesPath = '/api/asignaciones';
 
+    // Ejecución de configuraciones
     this.middlewares();
     this.routes();
     this.sockets();
   }
 
-  async middlewares() {
-    this.app.use(helmet({ contentSecurityPolicy: false }));
+  // REVISIÓN DE MIDDLEWARES (Aquí estaba el posible bloqueo)
+  middlewares() {
+    // 1. CORS: Permitir conexiones externas
     this.app.use(cors({ origin: true, credentials: true }));
 
-    this.app.use(express.json({ limit: '100mb' }));
-    this.app.use(
-      express.urlencoded({
-        limit: `${process.env.FILE_LIMIT}mb`,
-        extended: false
-      })
-    );
+    // 2. Helmet: Seguridad de encabezados
+    this.app.use(helmet({ contentSecurityPolicy: false }));
 
+    // 3. Parseo de JSON y formularios
+    this.app.use(express.json({ limit: '100mb' }));
+    this.app.use(express.urlencoded({ limit: '100mb', extended: false }));
+
+    // 4. Carpeta pública (Logo y estáticos)
     this.app.use(express.static('public'));
 
-    try {
-      const rateLimiter = await createRateLimiter({
-        storeClient: pool,
-        points: 100,
-        duration: 60
-      });
-
-      this.app.use(async (req, res, next) => {
-        try {
-          await rateLimiter.consume(req.ip);
-          next();
-        } catch {
-          res.status(429).json({
-            ok: false,
-            msg: 'Demasiadas solicitudes, intenta más tarde.'
-          });
-        }
-      });
-    } catch (error) {
-      console.error('Error iniciando rate limiter:', error);
-    }
+    // NOTA: He quitado el bloque de 'rateLimiter' para evitar que la 
+    // conexión a la DB bloquee el arranque en Render.
   }
 
   routes() {
@@ -91,14 +68,11 @@ class Server {
       res.json({ ok: true, message: 'API Bienes & Logística OK ✅' });
     });
 
+    // Rutas de la aplicación
     this.app.use(this.authPath, require('../Routes/auth.js'));
-
-    // Seguridad
     this.app.use(this.usersPath, require('../Routes/usuarios.js'));
     this.app.use(this.rolesPath, require('../Routes/roles.js'));
     this.app.use(this.permisosPath, require('../Routes/permisos.js'));
-
-    // Operación
     this.app.use(this.inventarioPath, require('../Routes/inventario.js'));
     this.app.use(this.reservasPath, require('../Routes/reservas.js'));
     this.app.use(this.solicitudesPath, require('../Routes/solicitudes.js'));
@@ -107,6 +81,7 @@ class Server {
     this.app.use('/api/reportes', require('../Routes/reportes.js'));
     this.app.use(this.asignacionesPath, require('../Routes/asignaciones.js'));
 
+    // Manejo de rutas no encontradas
     this.app.use((req, res) => {
       res.status(404).json({
         ok: false,
@@ -120,12 +95,11 @@ class Server {
   }
 
   listen() {
+    // Usar 0.0.0.0 es clave para Render
     this.serverHttp.listen(this.port, '0.0.0.0', () => {
       console.log(`✅ Servidor corriendo en puerto ${this.port}`);
     });
   }
 }
 
-module.exports = {
-  Server
-};
+module.exports = { Server };
