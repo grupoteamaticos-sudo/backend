@@ -1,12 +1,11 @@
 const jwt = require('jsonwebtoken');
 const pool = require('../DB/db');
-const client = require('./init-redis');
+// const client = require('./init-redis'); // Comentado: No se usará Redis en Render por ahora
 
 /* ============================================================
    ACCESS TOKEN – Configurable por .env
    ============================================================ */
 const generateAuhtJWT = (payload = {}) => {
-
     return new Promise((resolve, reject) => {
         jwt.sign(
             payload,
@@ -22,12 +21,10 @@ const generateAuhtJWT = (payload = {}) => {
     });
 };
 
-
 /* ============================================================
    TOKEN PRINCIPAL (legacy opcional)
    ============================================================ */
 const generateJWT = (payload = {}) => {
-
     return new Promise((resolve, reject) => {
         jwt.sign(
             payload,
@@ -36,9 +33,9 @@ const generateJWT = (payload = {}) => {
                 expiresIn: process.env.ACCESS_EXPIRES || '1d'
             },
             async (error, token) => {
-
                 if (error) return reject(error);
 
+                /* DESHABILITADO REDIS:
                 await client.SET(
                     `session:${payload.id_usuario}`,
                     token,
@@ -46,19 +43,17 @@ const generateJWT = (payload = {}) => {
                         EX: 24 * 60 * 60
                     }
                 );
-
+                */
                 resolve(token);
             }
         );
     });
 };
 
-
 /* ============================================================
    REFRESH TOKEN ENTERPRISE
    ============================================================ */
 const generateRefreshToken = (payload = {}) => {
-
     return new Promise((resolve, reject) => {
         jwt.sign(
             payload,
@@ -67,17 +62,16 @@ const generateRefreshToken = (payload = {}) => {
                 expiresIn: process.env.REFRESH_EXPIRES || '7d'
             },
             async (error, token) => {
-
                 if (error) return reject(error);
 
-                // Guardar con expiración real configurable
+                /* DESHABILITADO REDIS:
                 const expiresSeconds = 7 * 24 * 60 * 60;
-
                 await client.SET(
                     `refresh:${payload.id_usuario}`,
                     token,
                     { EX: expiresSeconds }
                 );
+                */
 
                 resolve(token);
             }
@@ -85,18 +79,14 @@ const generateRefreshToken = (payload = {}) => {
     });
 };
 
-
 /* ============================================================
    TOKEN DE RECUPERACIÓN
    ============================================================ */
 const generateJWTRecovery = async (uid = '') => {
-
     const payload = { uid };
-
     const query = await pool.query(
         'SELECT * FROM FN_VENCIMIENTO_RECOVERY()'
     );
-
     const vencimiento = query.rows[0].t_vencimiento;
 
     return new Promise((resolve, reject) => {
@@ -112,16 +102,12 @@ const generateJWTRecovery = async (uid = '') => {
     });
 };
 
-
 /* ============================================================
    VERIFICAR ACCESS TOKEN
    ============================================================ */
 const comprobarToken = async (token = '') => {
-
     if (!token) return null;
-
     try {
-
         const decoded = jwt.verify(
             token,
             process.env.ACCESS_JWT_SECRET
@@ -138,59 +124,51 @@ const comprobarToken = async (token = '') => {
         if (user.t_estado !== 1) return null;
 
         return user;
-
     } catch (error) {
         console.log('❌ Error comprobando token:', error);
         return null;
     }
 };
 
-
 /* ============================================================
    VERIFICAR REFRESH TOKEN
    ============================================================ */
 const verifyRefreshToken = async (token = '') => {
-
     try {
-
         const decoded = jwt.verify(
             token,
             process.env.REFRESH_JWT_SECRET
         );
 
+        /* DESHABILITADO REDIS:
         const stored = await client.GET(
             `refresh:${decoded.id_usuario}`
         );
-
         if (!stored || stored !== token) return null;
+        */
 
         return decoded;
-
     } catch (error) {
         console.log('❌ Refresh token inválido:', error);
         return null;
     }
 };
 
-
 /* ============================================================
    CERRAR SESIÓN
    ============================================================ */
 const invalidateJWT = async (id_usuario = '') => {
-
     try {
-
+        /* DESHABILITADO REDIS:
         await client.DEL(`session:${id_usuario}`);
         await client.DEL(`refresh:${id_usuario}`);
-
+        */
         return true;
-
     } catch (error) {
         console.log('❌ Error invalidando token:', error);
         return false;
     }
 };
-
 
 module.exports = {
     generateAuhtJWT,
