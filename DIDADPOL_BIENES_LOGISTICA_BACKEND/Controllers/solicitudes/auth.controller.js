@@ -99,16 +99,33 @@ const login = async (req, res) => {
         message: `Credenciales inválidas. Intento ${updated.intentos_fallidos} de ${MAX_INTENTOS}`
       });
     }
+const { roles, permisos } = await getRolesPermisos(user.id_usuario);
+    
+    const payload = {
+      id_usuario: user.id_usuario,
+      id_empleado: user.id_empleado,
+      roles,
+      permisos
+    };
 
-    const challenge = await createLoginOtpChallenge(user);
+    const accessToken = await generateAuhtJWT(payload);
+    const refreshToken = await generateRefreshToken(payload);
 
     return res.json({
       ok: true,
-      requires2FA: true,
-      tempToken: challenge.tempToken,
-      channel: challenge.channel,
-      expiresInSeconds: challenge.expiresInSeconds,
-      ...(challenge.devOtp ? { devOtp: challenge.devOtp } : {})
+      requires2FA: false, // <-- Desactivamos el OTP
+      data: {
+        accessToken,
+        refreshToken,
+        roles,
+        permisos,
+        usuario: {
+          id: user.id_usuario,
+          username: user.nombre_usuario,
+          nombre_usuario: user.nombre_usuario,
+          correo_login: user.correo_login
+        }
+      }
     });
   } catch (error) {
     return res.status(500).json({
