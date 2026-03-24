@@ -23,7 +23,7 @@ const {
 const { registrarEvento } = require('../../Helpers/auditoria');
 
 /* ============================================================
-   LOGIN – PROCESO SIMPLIFICADO (SIN OTP)
+   LOGIN – PROCESO CON VERIFICACIÓN OTP (CORREGIDO)
    ============================================================ */
 const login = async (req, res) => {
   try {
@@ -100,53 +100,27 @@ const login = async (req, res) => {
       });
     }
 
-    // --- SALTO DE OTP: GENERACIÓN DIRECTA DE SESIÓN ---
-    
-    // Actualizamos el último acceso en la DB
-    await resetAttemptsAndUpdateAccess(user.id_usuario);
+    // --- GENERACIÓN DE DESAFÍO OTP (ACTUALIZADO PARA DANIEL) ---
+    // Esto llamará a createLoginOtpChallenge que tiene el console.log con el cohete 🚀
+    const challenge = await createLoginOtpChallenge(user);
 
-    // Obtenemos los permisos necesarios para el Frontend
-    const { roles, permisos } = await getRolesPermisos(user.id_usuario);
-    
-    const payload = {
-      id_usuario: user.id_usuario,
-      id_empleado: user.id_empleado,
-      roles,
-      permisos
-    };
-
-    // Generamos tokens de acceso
-    const accessToken = await generateAuhtJWT(payload);
-    const refreshToken = await generateRefreshToken(payload);
-
-    // Auditoría de éxito
     await registrarEvento({
       id_usuario: user.id_usuario,
-      tipo_accion: 'LOGIN_SUCCESS',
+      tipo_accion: 'OTP_GENERATED',
       tabla_afectada: 'usuario',
       registro_afectado: user.id_usuario,
       ip_origen,
-      descripcion_log: 'Inicio de sesión exitoso (OTP Bypass para despliegue)'
+      descripcion_log: 'Desafío OTP generado exitosamente'
     });
 
-    // Respuesta completa que espera Angular
+    // Enviamos la respuesta que el Frontend espera para activar el formulario del código
     return res.json({
       ok: true,
-      requires2FA: false, 
-      data: {
-        accessToken,
-        refreshToken,
-        roles,
-        permisos,
-        usuario: {
-          id: user.id_usuario,
-          id_usuario: user.id_usuario,
-          id_empleado: user.id_empleado,
-          username: user.nombre_usuario,
-          nombre_usuario: user.nombre_usuario,
-          correo_login: user.correo_login
-        }
-      }
+      requires2FA: true,
+      tempToken: challenge.tempToken,
+      expiresInSeconds: challenge.expiresInSeconds,
+      channel: challenge.channel,
+      devOtp: challenge.devOtp 
     });
 
   } catch (error) {
@@ -159,31 +133,70 @@ const login = async (req, res) => {
 };
 
 /* ============================================================
-   VERIFICACIÓN OTP (Mantenemos la función por compatibilidad, 
-   aunque ya no se usará en el login principal)
+   VERIFICACIÓN OTP
    ============================================================ */
 const verifyOtp = async (req, res) => {
   try {
     const { tempToken, code } = req.body;
     const ip_origen = req.ip;
+
+    // Validamos el código contra Redis
     const otpData = await verifyLoginOtpChallenge(tempToken, code);
+    
+    // Si el código es correcto, buscamos al usuario para crear la sesión final
     const user = await findUserByUsername(otpData.username);
 
-    if (!user) return res.status(404).json({ ok: false, message: 'Usuario no encontrado' });
+    if (!user) {
+      return res.status(404).json({ 
+        ok: false, 
+        message: 'Usuario no encontrado tras verificación' 
+      });
+    }
 
+    // Limpiamos intentos y actualizamos acceso
     await resetAttemptsAndUpdateAccess(user.id_usuario);
+    
+    // Obtenemos roles y permisos para el token final
     const { roles, permisos } = await getRolesPermisos(user.id_usuario);
 
-    const payload = { id_usuario: user.id_usuario, id_empleado: user.id_empleado, roles, permisos };
+    const payload = { 
+      id_usuario: user.id_usuario, 
+      id_empleado: user.id_empleado, 
+      roles, 
+      permisos 
+    };
+
     const accessToken = await generateAuhtJWT(payload);
     const refreshToken = await generateRefreshToken(payload);
 
+    await registrarEvento({
+      id_usuario: user.id_usuario,
+      tipo_accion: 'LOGIN_SUCCESS',
+      tabla_afectada: 'usuario',
+      registro_afectado: user.id_usuario,
+      ip_origen,
+      descripcion_log: 'Inicio de sesión exitoso tras validar OTP'
+    });
+
     return res.json({
       ok: true,
-      data: { accessToken, refreshToken, roles, permisos, usuario: { id: user.id_usuario, username: user.nombre_usuario } }
+      data: { 
+        accessToken, 
+        refreshToken, 
+        roles, 
+        permisos, 
+        usuario: { 
+          id: user.id_usuario, 
+          username: user.nombre_usuario,
+          correo_login: user.correo_login 
+        } 
+      }
     });
   } catch (error) {
-    return res.status(400).json({ ok: false, message: error.message });
+    return res.status(400).json({ 
+      ok: false, 
+      message: error.message 
+    });
   }
 };
 
@@ -206,7 +219,6 @@ const userRegister = async (req, res) => {
 const forgotPassword = async (req, res) => {
   try {
     const { identifier } = req.body;
-    const ip_origen = req.ip;
     const user = await findUserByIdentifier(identifier);
     if (!user) return res.status(404).json({ ok: false, message: 'No existe usuario' });
 
