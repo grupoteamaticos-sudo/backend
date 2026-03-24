@@ -158,9 +158,8 @@ async function createLoginOtpChallenge(user) {
   const tempToken = genTempToken('login');
   const ttlSeconds = OTP_MINUTES * 60;
 
-  // ************ AGREGA ESTA LÍNEA AQUÍ ************
-  console.log(`🚀 CÓDIGO OTP GENERADO PARA ${user.nombre_usuario}: ${otp}`);
-  // ************************************************
+ console.log(`🚀 CÓDIGO OTP GENERADO PARA ${user.nombre_usuario}: ${otp}`);
+  
 
   const payload = {
     flow: 'LOGIN',
