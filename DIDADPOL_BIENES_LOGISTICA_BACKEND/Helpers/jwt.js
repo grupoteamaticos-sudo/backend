@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const pool = require('../DB/db');
-// const client = require('./init-redis'); // Comentado: No se usará Redis en Render por ahora
+const client = require('./init-redis'); // Habilitado para conectar con Redis Cloud
 
 /* ============================================================
    ACCESS TOKEN – Configurable por .env
@@ -35,15 +35,19 @@ const generateJWT = (payload = {}) => {
             async (error, token) => {
                 if (error) return reject(error);
 
-                /* DESHABILITADO REDIS:
-                await client.SET(
-                    `session:${payload.id_usuario}`,
-                    token,
-                    {
-                        EX: 24 * 60 * 60
-                    }
-                );
-                */
+                // Habilitado: Guarda la sesión en Redis
+                try {
+                    await client.set(
+                        `session:${payload.id_usuario}`,
+                        token,
+                        {
+                            EX: 24 * 60 * 60 // Expira en 24 horas
+                        }
+                    );
+                } catch (redisError) {
+                    console.error('❌ Error guardando sesión en Redis:', redisError);
+                }
+                
                 resolve(token);
             }
         );
@@ -64,14 +68,17 @@ const generateRefreshToken = (payload = {}) => {
             async (error, token) => {
                 if (error) return reject(error);
 
-                /* DESHABILITADO REDIS:
-                const expiresSeconds = 7 * 24 * 60 * 60;
-                await client.SET(
-                    `refresh:${payload.id_usuario}`,
-                    token,
-                    { EX: expiresSeconds }
-                );
-                */
+                // Habilitado: Guarda el refresh token en Redis
+                try {
+                    const expiresSeconds = 7 * 24 * 60 * 60; // 7 días
+                    await client.set(
+                        `refresh:${payload.id_usuario}`,
+                        token,
+                        { EX: expiresSeconds }
+                    );
+                } catch (redisError) {
+                    console.error('❌ Error guardando refresh token en Redis:', redisError);
+                }
 
                 resolve(token);
             }
@@ -140,12 +147,12 @@ const verifyRefreshToken = async (token = '') => {
             process.env.REFRESH_JWT_SECRET
         );
 
-        /* DESHABILITADO REDIS:
-        const stored = await client.GET(
+        // Habilitado: Verifica que el token coincida con el almacenado en Redis
+        const stored = await client.get(
             `refresh:${decoded.id_usuario}`
         );
+        
         if (!stored || stored !== token) return null;
-        */
 
         return decoded;
     } catch (error) {
@@ -159,10 +166,10 @@ const verifyRefreshToken = async (token = '') => {
    ============================================================ */
 const invalidateJWT = async (id_usuario = '') => {
     try {
-        /* DESHABILITADO REDIS:
-        await client.DEL(`session:${id_usuario}`);
-        await client.DEL(`refresh:${id_usuario}`);
-        */
+        // Habilitado: Elimina las claves de sesión y refresh de Redis
+        await client.del(`session:${id_usuario}`);
+        await client.del(`refresh:${id_usuario}`);
+        
         return true;
     } catch (error) {
         console.log('❌ Error invalidando token:', error);
