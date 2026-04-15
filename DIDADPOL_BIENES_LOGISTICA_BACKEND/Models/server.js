@@ -31,6 +31,8 @@ class Server {
     this.usersPath = '/api/usuarios';
     this.rolesPath = '/api/roles';
     this.permisosPath = '/api/permisos';
+    this.personasPath = '/api/personas';
+    this.empleadosPath = '/api/empleados';
     this.inventarioPath = '/api/inventario';
     this.reservasPath = '/api/reservas';
     this.solicitudesPath = '/api/solicitudes';
@@ -73,6 +75,8 @@ class Server {
     this.app.use(this.usersPath, require('../Routes/usuarios.js'));
     this.app.use(this.rolesPath, require('../Routes/roles.js'));
     this.app.use(this.permisosPath, require('../Routes/permisos.js'));
+    this.app.use(this.personasPath, require('../Routes/personas.js'));
+    this.app.use(this.empleadosPath, require('../Routes/empleados.js'));
     this.app.use(this.inventarioPath, require('../Routes/inventario.js'));
     this.app.use(this.reservasPath, require('../Routes/reservas.js'));
     this.app.use(this.solicitudesPath, require('../Routes/solicitudes.js'));
