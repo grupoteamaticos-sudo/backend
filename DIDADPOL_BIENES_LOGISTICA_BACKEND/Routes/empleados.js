@@ -16,3 +16,13 @@ router.get(
   checkPermission('EMPLEADO_VER'),
   getEmpleados
 );
+
+router.post(
+  '/',
+  validarJWT,
+  soloAdmin,
+  checkPermission('EMPLEADO_CREAR'),
+  postEmpleado
+);
+
+module.exports = router;
