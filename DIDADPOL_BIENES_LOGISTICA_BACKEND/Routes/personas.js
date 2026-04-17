@@ -8,6 +8,8 @@ const { validarJWT } = require('../Middlewares/validar-jwt');
 
 const router = Router();
 
+// fin del archivo 
+
 router.get('/', validarJWT, getPersonas);
 router.post('/', validarJWT, postPersona);
 

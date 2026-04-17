@@ -49,6 +49,7 @@ const postEmpleado = async (req, res) => {
     res.status(500).json({ ok: false, msg: error.message });
   }
 };
+// fin del archivo 
 
 module.exports = {
   getEmpleados,

@@ -24,5 +24,5 @@ router.post(
   checkPermission('EMPLEADO_CREAR'),
   postEmpleado
 );
-
+  // fin del archivo 
 module.exports = router;

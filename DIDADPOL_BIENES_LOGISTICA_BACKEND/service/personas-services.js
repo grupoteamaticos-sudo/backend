@@ -96,6 +96,8 @@ async function crearPersona(data) {
   return true;
 }
 
+// fin del archivo 
+
 module.exports = {
   listarPersonas,
   crearPersona

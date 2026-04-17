@@ -34,7 +34,7 @@ const postPersona = async (req, res) => {
     });
   }
 };
-
+ // fin del archivo 
 module.exports = {
   getPersonas,
   postPersona
